@@ -141,62 +141,86 @@ const getAllProducts = async (filters = {}) => {
     search,
     min_price,
     max_price,
+    tags,
+    is_in_stock,
     sort_by = 'created_at',
     sort_order = 'desc'
   } = filters;
 
   const offset = (page - 1) * limit;
-  const conditions = ['deleted_at IS NULL'];
+  const conditions = ['p.deleted_at IS NULL'];
   const values = [];
   let paramCount = 1;
 
   // Build WHERE clause
   if (category_id) {
-    conditions.push(`category_id = $${paramCount}`);
+    conditions.push(`p.category_id = $${paramCount}`);
     values.push(category_id);
     paramCount++;
   }
 
   if (is_active !== undefined) {
-    conditions.push(`is_active = $${paramCount}`);
+    conditions.push(`p.is_active = $${paramCount}`);
     values.push(is_active);
     paramCount++;
   }
 
   if (is_featured !== undefined) {
-    conditions.push(`is_featured = $${paramCount}`);
+    conditions.push(`p.is_featured = $${paramCount}`);
     values.push(is_featured);
     paramCount++;
   }
 
   if (search) {
-    conditions.push(`(name ILIKE $${paramCount} OR description ILIKE $${paramCount} OR slug ILIKE $${paramCount})`);
-    values.push(`%${search}%`);
+    conditions.push(`p.search_vector @@ to_tsquery('english', $${paramCount})`);
+    values.push(search.split(' ').join(' & '));
     paramCount++;
   }
 
   if (min_price !== undefined) {
-    conditions.push(`price >= $${paramCount}`);
+    conditions.push(`p.price >= $${paramCount}`);
     values.push(min_price);
     paramCount++;
   }
 
   if (max_price !== undefined) {
-    conditions.push(`price <= $${paramCount}`);
+    conditions.push(`p.price <= $${paramCount}`);
     values.push(max_price);
     paramCount++;
   }
+  
+  if (tags) {
+    conditions.push(`p.tags @> $${paramCount}`);
+    values.push(JSON.stringify(tags.split(',')));
+    paramCount++;
+  }
+
+  if (is_in_stock !== undefined) {
+    if (is_in_stock) {
+        conditions.push('p.inventory_quantity > 0');
+    } else {
+        conditions.push('p.inventory_quantity <= 0');
+    }
+  }
 
   // Validate sort column
-  const allowedSortColumns = ['created_at', 'updated_at', 'price', 'name', 'inventory_quantity'];
-  const sortColumn = allowedSortColumns.includes(sort_by) ? sort_by : 'created_at';
+  const allowedSortColumns = {
+    'created_at': 'p.created_at',
+    'updated_at': 'p.updated_at',
+    'price': 'p.price',
+    'name': 'p.name',
+    'inventory_quantity': 'p.inventory_quantity',
+    'best-selling': 'p.sales_count',
+    'highest-rated': 'p.average_rating'
+  };
+  const sortColumn = allowedSortColumns[sort_by] || 'p.created_at';
   const order = sort_order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
   // Build queries
   const whereClause = conditions.join(' AND ');
   
   // Count total
-  const countQuery = `SELECT COUNT(*) FROM products WHERE ${whereClause}`;
+  const countQuery = `SELECT COUNT(*) FROM products p WHERE ${whereClause}`;
   const countResult = await query(countQuery, values);
   const total = parseInt(countResult.rows[0].count);
 
@@ -208,7 +232,7 @@ const getAllProducts = async (filters = {}) => {
     FROM products p
     LEFT JOIN categories c ON p.category_id = c.id
     WHERE ${whereClause}
-    ORDER BY p.${sortColumn} ${order}
+    ORDER BY ${sortColumn} ${order}
     LIMIT $${paramCount} OFFSET $${paramCount + 1}
   `;
   

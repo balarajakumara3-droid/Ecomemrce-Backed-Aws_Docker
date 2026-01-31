@@ -55,6 +55,8 @@ const getAllProducts = async (req, res, next) => {
       search: req.query.search,
       min_price: req.query.min_price,
       max_price: req.query.max_price,
+      tags: req.query.tags,
+      is_in_stock: req.query.is_in_stock !== undefined ? req.query.is_in_stock === 'true' : undefined,
       sort_by: req.query.sort_by,
       sort_order: req.query.sort_order
     };

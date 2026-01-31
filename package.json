@@ -11,7 +11,8 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "lint": "eslint .",
-    "db:init": "node scripts/init-db.js"
+    "db:init": "node scripts/init-db.js",
+    "db:migrate": "node scripts/run-migrations.js"
   },
   "keywords": [
     "ecommerce",
@@ -30,6 +31,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "express-session": "^1.19.0",
     "express-validator": "^7.0.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",

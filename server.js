@@ -15,6 +15,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const session = require('express-session');
 require('dotenv').config();
 
 // Import routes
@@ -22,6 +23,14 @@ const authRoutes = require('./routes/auth.routes');
 const productRoutes = require('./routes/product.routes');
 const variantRoutes = require('./routes/variant.routes');
 const collectionRoutes = require('./routes/collection.routes');
+const cartRoutes = require('./routes/cart.routes');
+const couponRoutes = require('./routes/coupon.routes');
+const orderRoutes = require('./routes/order.routes');
+const reviewRoutes = require('./routes/review.routes');
+const analyticsRoutes = require('./routes/analytics.routes');
+const addressRoutes = require('./routes/address.routes');
+const ooruSpecialsRoutes = require('./routes/ooru-specials.routes');
+const tamilClassicsRoutes = require('./routes/tamil-classics.routes');
 
 // Import middleware
 const errorHandler = require('./middleware/error.middleware');
@@ -80,6 +89,18 @@ app.use(express.json({ limit: '10mb' }));
 // Parse URL-encoded bodies (for form submissions)
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: 'auto', // Recommended
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
+
 // ==========================================
 // HEALTH CHECK ROUTE
 // ==========================================
@@ -114,7 +135,15 @@ app.get('/', (req, res) => {
       auth: '/api/v1/auth',
       products: '/api/v1/products',
       variants: '/api/v1/variants',
-      collections: '/api/v1/collections'
+      collections: '/api/v1/collections',
+      cart: '/api/v1/cart',
+      coupons: '/api/v1/coupons',
+      orders: '/api/v1/orders',
+      reviews: '/api/v1/reviews',
+      analytics: '/api/v1/analytics',
+      addresses: '/api/v1/addresses',
+      'ooru-specials': '/api/v1/ooru-specials',
+      'tamil-classics': '/api/v1/tamil-classics'
     }
   });
 });
@@ -128,6 +157,12 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productRoutes);
 app.use('/api/v1/variants', variantRoutes);
 app.use('/api/v1/collections', collectionRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/coupons', couponRoutes);
+app.use('/api/v1/orders', orderRoutes);
+app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/ooru-specials', ooruSpecialsRoutes);
+app.use('/api/v1/tamil-classics', tamilClassicsRoutes);
 
 // ==========================================
 // ERROR HANDLING (Must be last!)

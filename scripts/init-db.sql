@@ -2,6 +2,10 @@
 -- Run this to create all tables for the e-commerce API
 -- This script creates the schema based on the Supabase export
 
+-- Drop functions if they exist
+DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP FUNCTION IF EXISTS update_search_vector();
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
@@ -13,24 +17,37 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255),  -- For JWT auth (nullable for social auth later)
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(20),
-    address JSONB,  -- Flexible address storage: {street, city, state, zip, country}
-    avatar_url TEXT,
-    role VARCHAR(50) DEFAULT 'customer',  -- customer, admin, vendor
+    user_id UUID NOT NULL UNIQUE,  -- For compatibility, same as id
+    email TEXT UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    first_name TEXT,
+    last_name TEXT,
+    phone TEXT,
+    roles TEXT[] DEFAULT ARRAY['customer'],
     is_admin BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    profile_picture TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    deleted_at TIMESTAMP WITH TIME ZONE  -- Soft delete
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Trigger to sync id and user_id
+CREATE OR REPLACE FUNCTION sync_user_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.user_id = NEW.id;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_sync_user_id
+    BEFORE INSERT ON profiles
+    FOR EACH ROW EXECUTE FUNCTION sync_user_id();
 
 -- Indexes for profiles
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
-CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
-CREATE INDEX IF NOT EXISTS idx_profiles_deleted_at ON profiles(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(roles);
 
 -- ==========================================
 -- CATEGORIES TABLE
@@ -80,6 +97,10 @@ CREATE TABLE IF NOT EXISTS products (
     images JSONB,  -- Array of image URLs
     seo_title VARCHAR(255),
     seo_description TEXT,
+    product_url TEXT,
+    currency VARCHAR(3) DEFAULT 'INR',
+    status VARCHAR(50) DEFAULT 'active',
+    search_vector tsvector,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -91,6 +112,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_active ON products(is_active);
 CREATE INDEX IF NOT EXISTS idx_products_featured ON products(is_featured) WHERE is_featured = TRUE;
 CREATE INDEX IF NOT EXISTS idx_products_price ON products(price);
+CREATE INDEX IF NOT EXISTS idx_products_search ON products USING GIN(search_vector);
 
 -- ==========================================
 -- PRODUCT VARIANTS TABLE
@@ -109,6 +131,9 @@ CREATE TABLE IF NOT EXISTS product_variants (
     weight DECIMAL(8, 2),
     options JSONB NOT NULL,  -- {size: "Large", color: "Red"}
     image_url TEXT,
+    msrp NUMERIC,
+    weight_grams INTEGER,
+    low_stock_threshold INTEGER DEFAULT 5,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -143,12 +168,10 @@ CREATE TABLE IF NOT EXISTS collections (
 -- Many-to-many link between collections and products
 
 CREATE TABLE IF NOT EXISTS collection_products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(collection_id, product_id)
+    PRIMARY KEY (collection_id, product_id)
 );
 
 -- Indexes
@@ -199,6 +222,10 @@ CREATE TABLE IF NOT EXISTS orders (
     shipping_address JSONB NOT NULL,
     billing_address JSONB,
     notes TEXT,
+    admin_notes TEXT,
+    assigned_to UUID REFERENCES profiles(id),
+    priority VARCHAR(50) DEFAULT 'normal',
+    special_instructions TEXT,
     cancelled_at TIMESTAMP WITH TIME ZONE,
     cancelled_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -210,6 +237,8 @@ CREATE INDEX IF NOT EXISTS idx_orders_number ON orders(order_number);
 CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+CREATE INDEX IF NOT EXISTS idx_orders_assigned ON orders(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_orders_priority ON orders(priority);
 
 -- ==========================================
 -- ORDER ITEMS TABLE
@@ -260,6 +289,20 @@ CREATE TABLE IF NOT EXISTS coupons (
 );
 
 -- ==========================================
+-- COUPON USAGE TABLE
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS coupon_usage (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    coupon_id UUID NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+    order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
+    used_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_coupon_usage_coupon ON coupon_usage(coupon_id);
+CREATE INDEX IF NOT EXISTS idx_coupon_usage_user ON coupon_usage(user_id);
+
+-- ==========================================
 -- REVIEWS TABLE
 -- ==========================================
 
@@ -270,6 +313,9 @@ CREATE TABLE IF NOT EXISTS reviews (
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     title VARCHAR(255),
     body TEXT,
+    customer_name TEXT,
+    review_title TEXT,
+    review_comment TEXT,
     is_verified_purchase BOOLEAN DEFAULT FALSE,
     is_approved BOOLEAN DEFAULT FALSE,  -- Moderation
     helpful_count INTEGER DEFAULT 0,
@@ -296,6 +342,21 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ==========================================
+-- FUNCTION: Update search vector
+-- ==========================================
+
+CREATE OR REPLACE FUNCTION update_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.search_vector :=
+        setweight(to_tsvector('english', COALESCE(NEW.name, '')), 'A') ||
+        setweight(to_tsvector('english', COALESCE(NEW.description, '')), 'B') ||
+        setweight(to_tsvector('english', array_to_string(NEW.tags, ' ')), 'C');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==========================================
 -- TRIGGERS: Auto-update updated_at
 -- ==========================================
 
@@ -307,6 +368,9 @@ CREATE TRIGGER update_categories_updated_at BEFORE UPDATE ON categories
 
 CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER product_search_update BEFORE INSERT OR UPDATE ON products
+    FOR EACH ROW EXECUTE FUNCTION update_search_vector();
 
 CREATE TRIGGER update_product_variants_updated_at BEFORE UPDATE ON product_variants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

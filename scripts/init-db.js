@@ -41,26 +41,11 @@ const initDatabase = async () => {
     // 3. Execute SQL commands
     logger.info('Executing database schema...');
     
-    // Split SQL into individual statements
-    const statements = sql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i] + ';';
-      try {
-        await query(statement);
-        logger.debug(`✅ Executed statement ${i + 1}/${statements.length}`);
-      } catch (error) {
-        // Ignore "already exists" errors
-        if (error.message.includes('already exists')) {
-          logger.debug(`⚠️  Statement ${i + 1} skipped (already exists)`);
-        } else {
-          logger.error(`❌ Error executing statement ${i + 1}:`, error.message);
-          // Continue with next statement
-        }
-      }
+    try {
+        await query(sql);
+    } catch (error) {
+        logger.error('❌ Error executing database schema:', error);
+        process.exit(1);
     }
     
     logger.info('✅ Database initialization complete!');

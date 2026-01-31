@@ -277,6 +277,23 @@ const validateReorderCollection = [
   handleValidationErrors
 ];
 
+const validateCartItem = [
+  body('product_id')
+    .isUUID()
+    .withMessage('Product ID must be a valid UUID'),
+
+  body('quantity')
+    .isInt({ min: 1 })
+    .withMessage('Quantity must be a positive integer'),
+  
+  body('variant_id')
+    .optional()
+    .isUUID()
+    .withMessage('Variant ID must be a valid UUID'),
+
+  handleValidationErrors
+];
+
 // ==========================================
 // EXPORT
 // ==========================================
@@ -293,5 +310,6 @@ module.exports = {
   validateInventoryUpdate,
   validateCollectionCreate,
   validateAddToCollection,
-  validateReorderCollection
+  validateReorderCollection,
+  validateCartItem
 };

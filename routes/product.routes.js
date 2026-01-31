@@ -26,6 +26,7 @@ const {
   validateUUID 
 } = require('../middleware/validation.middleware');
 const { uploadMultiple, uploadSingle, handleUploadError } = require('../middleware/upload.middleware');
+const { audit } = require('../middleware/audit.middleware');
 
 // ==========================================
 // PUBLIC ROUTES
@@ -60,7 +61,8 @@ router.put('/:id',
   validateUUID,
   uploadMultiple, 
   handleUploadError, 
-  validateProductUpdate, 
+  validateProductUpdate,
+  audit('product', 'update'),
   productController.updateProduct
 );
 
