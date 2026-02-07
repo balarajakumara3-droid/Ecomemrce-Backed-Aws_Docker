@@ -4,6 +4,9 @@
  * This file runs before all tests to set up the test environment
  */
 
+// Load environment variables FIRST (before any other requires)
+require('dotenv').config();
+
 // Set test environment
 process.env.NODE_ENV = 'test';
 
@@ -11,7 +14,7 @@ process.env.NODE_ENV = 'test';
 // These can be overridden by a test.env file or CI environment variables
 process.env.DB_HOST = process.env.DB_HOST || 'localhost';
 process.env.DB_PORT = process.env.DB_PORT || '5432';
-process.env.DB_NAME = process.env.DB_NAME || 'ecommerce_test';
+process.env.DB_NAME = process.env.DB_NAME || 'ecommerce_db';
 process.env.DB_USER = process.env.DB_USER || 'postgres';
 process.env.DB_PASSWORD = process.env.DB_PASSWORD || 'postgres';
 process.env.DB_SSL = 'false';

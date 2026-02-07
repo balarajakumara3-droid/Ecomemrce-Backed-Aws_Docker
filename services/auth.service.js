@@ -51,9 +51,9 @@ const register = async (userData) => {
     // Note: We're using the profiles table for both user data and auth
     const result = await query(
       `INSERT INTO profiles (
-        id, email, password_hash, first_name, last_name, 
+        id, user_id, email, password_hash, first_name, last_name, 
         role, is_admin, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+      ) VALUES ($1, $1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
       RETURNING id, email, first_name, last_name, role, is_admin, created_at`,
       [
         userId,

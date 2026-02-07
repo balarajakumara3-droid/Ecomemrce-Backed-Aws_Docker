@@ -23,11 +23,13 @@ CREATE TABLE IF NOT EXISTS profiles (
     first_name TEXT,
     last_name TEXT,
     phone TEXT,
-    roles TEXT[] DEFAULT ARRAY['customer'],
+    role TEXT DEFAULT 'customer',
     is_admin BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
     last_login_at TIMESTAMP WITH TIME ZONE,
-    profile_picture TEXT,
+    avatar_url TEXT,
+    address JSONB,
+    deleted_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -47,7 +49,7 @@ CREATE TRIGGER trigger_sync_user_id
 
 -- Indexes for profiles
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
-CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(roles);
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);
 
 -- ==========================================
 -- CATEGORIES TABLE

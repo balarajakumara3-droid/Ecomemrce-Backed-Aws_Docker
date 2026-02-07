@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 const { query } = require('../utils/db');
 const logger = require('../utils/logger');
 

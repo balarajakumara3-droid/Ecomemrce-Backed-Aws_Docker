@@ -6,13 +6,13 @@
  * Or: npm run db:init
  */
 
+// Load environment variables
+require('dotenv').config();
+
 const fs = require('fs');
 const path = require('path');
 const { query, testConnection } = require('../utils/db');
 const logger = require('../utils/logger');
-
-// Load environment variables
-require('dotenv').config();
 
 const initDatabase = async () => {
   try {
