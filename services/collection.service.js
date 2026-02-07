@@ -5,7 +5,7 @@
  * Can be manual (admin picks products) or automatic (based on conditions).
  */
 
-const { query, getClient } = require('../utils/db');
+const { query, getClient, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
@@ -320,7 +320,7 @@ const deleteCollection = async (collectionId) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }
@@ -369,7 +369,7 @@ const addProductToCollection = async (collectionId, productId, sortOrder = 0) =>
     return result.rows[0];
 
   } catch (error) {
-    throw error;
+    throw enhanceConnectionError(error);
   }
 };
 
@@ -423,7 +423,7 @@ const reorderCollectionProducts = async (collectionId, productOrders) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }

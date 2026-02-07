@@ -8,7 +8,7 @@
  * - Inventory management
  */
 
-const { query, getClient } = require('../utils/db');
+const { query, getClient, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
@@ -120,7 +120,7 @@ const createProduct = async (productData) => {
   } catch (error) {
     await client.query('ROLLBACK');
     logger.error('Create product error:', error);
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }
@@ -387,7 +387,7 @@ const updateProduct = async (productId, updateData) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }

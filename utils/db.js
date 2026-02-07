@@ -159,6 +159,43 @@ const closePool = async () => {
   logger.info('Database pool closed');
 };
 
+/**
+ * Check if an error is a database connection error
+ * @param {Error} error - The error to check
+ * @returns {boolean} - True if it's a connection error
+ */
+const isConnectionError = (error) => {
+  if (!error) return false;
+  
+  const connectionErrorPatterns = [
+    'getaddrinfo',
+    'ECONNREFUSED',
+    'ENOTFOUND',
+    'does not exist',
+    'Connection terminated',
+    'connect ETIMEDOUT',
+    'database does not exist',
+    'role "postgres" does not exist'
+  ];
+  
+  return connectionErrorPatterns.some(pattern => 
+    error.message && error.message.includes(pattern)
+  );
+};
+
+/**
+ * Enhance error with proper status code for database connection errors
+ * @param {Error} error - The error to enhance
+ * @returns {Error} - The enhanced error
+ */
+const enhanceConnectionError = (error) => {
+  if (isConnectionError(error)) {
+    error.statusCode = 503;
+    error.message = 'Database connection failed. Please ensure the database server is running and properly configured.';
+  }
+  return error;
+};
+
 // ==========================================
 // EXPORT
 // ==========================================
@@ -168,5 +205,7 @@ module.exports = {
   query,
   getClient,
   testConnection,
-  closePool
+  closePool,
+  isConnectionError,
+  enhanceConnectionError
 };

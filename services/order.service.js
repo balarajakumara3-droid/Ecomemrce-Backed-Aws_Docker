@@ -2,7 +2,7 @@
  * services/order.service.js - Order Business Logic
  */
 
-const { query, getClient } = require('../utils/db');
+const { query, getClient, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const couponService = require('./coupon.service');
@@ -78,7 +78,7 @@ const createOrder = async (userId, orderData) => {
     } catch (error) {
         await client.query('ROLLBACK');
         logger.error('Create order error:', error);
-        throw error;
+        throw enhanceConnectionError(error);
     } finally {
         client.release();
     }

@@ -2,7 +2,7 @@
  * services/cart.service.js - Cart Business Logic
  */
 
-const { query, getClient } = require('../utils/db');
+const { query, getClient, enhanceConnectionError } = require('../utils/db');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
 
@@ -99,7 +99,7 @@ const addToCart = async (cartId, productId, variantId, quantity) => {
   } catch (error) {
     await client.query('ROLLBACK');
     logger.error('Add to cart error:', error);
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }

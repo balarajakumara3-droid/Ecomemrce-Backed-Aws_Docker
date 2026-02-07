@@ -2,7 +2,7 @@
  * services/tamil-classics.service.js - Tamil Classics Business Logic
  */
 
-const { query } = require('../utils/db');
+const { query, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 
 const getProducts = async (classicType) => {

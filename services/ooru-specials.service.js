@@ -2,7 +2,7 @@
  * services/ooru-specials.service.js - Ooru Specials Business Logic
  */
 
-const { query } = require('../utils/db');
+const { query, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 

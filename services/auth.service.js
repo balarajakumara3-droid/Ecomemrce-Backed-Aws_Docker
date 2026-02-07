@@ -14,7 +14,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const { query } = require('../utils/db');
+const { query, enhanceConnectionError } = require('../utils/db');
 const logger = require('../utils/logger');
 
 // Configuration
@@ -80,7 +80,7 @@ const register = async (userData) => {
     
   } catch (error) {
     logger.error(`Registration error for ${email}:`, error.message);
-    throw error;
+    throw enhanceConnectionError(error);
   }
 };
 
@@ -143,7 +143,7 @@ const login = async (email, password) => {
     
   } catch (error) {
     logger.error(`Login error for ${email}:`, error.message);
-    throw error;
+    throw enhanceConnectionError(error);
   }
 };
 

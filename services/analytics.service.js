@@ -2,7 +2,7 @@
  * services/analytics.service.js - Analytics Business Logic
  */
 
-const { query } = require('../utils/db');
+const { query, enhanceConnectionError } = require('../utils/db');
 
 const getDashboardStats = async () => {
     const salesTodayResult = await query("SELECT SUM(total) as total_sales FROM orders WHERE created_at >= NOW() - interval '24 hours'");

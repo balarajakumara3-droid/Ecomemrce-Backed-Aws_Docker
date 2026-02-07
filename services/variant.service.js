@@ -9,7 +9,7 @@
  * - Option combinations (size, color, etc.)
  */
 
-const { query, getClient } = require('../utils/db');
+const { query, getClient, enhanceConnectionError } = require('../utils/db');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 
@@ -73,7 +73,7 @@ const createVariant = async (productId, variantData) => {
 
   } catch (error) {
     await client.query('ROLLBACK');
-    throw error;
+    throw enhanceConnectionError(error);
   } finally {
     client.release();
   }

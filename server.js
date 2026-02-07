@@ -161,6 +161,8 @@ app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/coupons', couponRoutes);
 app.use('/api/v1/orders', orderRoutes);
 app.use('/api/v1/reviews', reviewRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/addresses', addressRoutes);
 app.use('/api/v1/ooru-specials', ooruSpecialsRoutes);
 app.use('/api/v1/tamil-classics', tamilClassicsRoutes);
 
@@ -183,10 +185,22 @@ app.use(errorHandler);
 // START SERVER
 // ==========================================
 
-const server = app.listen(PORT, () => {
+const { testConnection } = require('./utils/db');
+
+const server = app.listen(PORT, async () => {
   logger.info(`🚀 Server running on port ${PORT}`);
   logger.info(`📚 API Documentation: http://localhost:${PORT}/`);
   logger.info(`🏥 Health Check: http://localhost:${PORT}/health`);
+  
+  // Test database connection
+  const dbConnected = await testConnection();
+  if (!dbConnected) {
+    logger.warn('⚠️  WARNING: Database not connected. API endpoints requiring database will return 503 errors.');
+    logger.info('💡 To set up the database:');
+    logger.info('   Option 1: Run "docker-compose up -d" to start PostgreSQL in Docker');
+    logger.info('   Option 2: Install PostgreSQL locally and run "npm run db:init"');
+    logger.info('   Option 3: Update .env with your database configuration');
+  }
 });
 
 // Graceful shutdown (handle Ctrl+C, Docker stop)

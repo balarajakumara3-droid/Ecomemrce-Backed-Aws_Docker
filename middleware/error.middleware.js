@@ -61,6 +61,24 @@ const errorHandler = (err, req, res, next) => {
       message = `${match[1]} already exists.`;
     }
   }
+
+  // Database connection errors (check both error code and message)
+  if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === '28P01') {
+    statusCode = 503;
+    message = 'Database connection failed. Please check your database configuration and ensure the database server is running.';
+  }
+
+  if (err.message && (
+    err.message.includes('getaddrinfo') ||
+    err.message.includes('ECONNREFUSED') ||
+    err.message.includes('ENOTFOUND') ||
+    err.message.includes('does not exist') ||
+    err.message.includes('password authentication failed') ||
+    err.message.includes('role') && err.message.includes('does not exist')
+  )) {
+    statusCode = 503;
+    message = 'Unable to connect to database. Please verify database configuration and ensure the database server is accessible.';
+  }
   
   if (err.code === '23503') {
     // Foreign key violation
